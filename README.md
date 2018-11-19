@@ -36,3 +36,4 @@
 
 ![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/6.png)
 
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/7.png)
