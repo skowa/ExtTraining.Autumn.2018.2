@@ -23,3 +23,9 @@
 *В код разрешено вносить любые изменения, являющиеся обоснованными и не ухудшающие его изначальную функциональность. Код должен быть задокументирован.*
 
 **Скриншоты работающего приложения.**
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/1.png)
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/2.png)
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/3.png)
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/4.png)
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/5.png)
+![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/6.png)
