@@ -22,10 +22,11 @@
 
 *В код разрешено вносить любые изменения, являющиеся обоснованными и не ухудшающие его изначальную функциональность. Код должен быть задокументирован.*
 
-**Скриншоты работающего приложения.**
+**Примерные скриншоты работающего приложения.**
 
+- Основные пункты меню
 ![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/1.png)
-
+- Основные пункты меню
 ![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/2.png)
 
 ![](https://github.com/AnzhelikaKravchuk/Materials/blob/master/Pictures/ExtTraining.Autumn.2018.2/3.png)
