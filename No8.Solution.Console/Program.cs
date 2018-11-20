@@ -1,27 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using NLog;
 using No8.Solution.Model;
 using No8.Solution.Repositories;
 
 namespace No8.Solution.Console
 {
-    public class Program
+    internal class Program
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
         [STAThread]
         public static void Main(string[] args)
         {
-            int key;
-
-            bool flag = false;
-
             PrinterManager manager = new PrinterManager(new ListPrinterRepository());
-            while(true)
+            manager.Printing += Print;
+
+            while (true)
             {
                 Menu();
-                if (int.TryParse(System.Console.ReadLine(), out key))
+                if (int.TryParse(System.Console.ReadLine(), out int key))
                 {
                     if (key == 1)
                     {
@@ -39,7 +38,9 @@ namespace No8.Solution.Console
                         break;
                     }
                 }
-            } 
+            }
+
+            manager.Printing -= Print;
         }
 
         private static void Menu()
@@ -68,15 +69,7 @@ namespace No8.Solution.Console
 
                 if (int.TryParse(System.Console.ReadLine(), out index))
                 {
-                    if (index < printers.Count && index >= 0)
-                    {
-                        foreach (var b in manager.Print(printers[index]))
-                        {
-                            System.Console.WriteLine(b);
-                        }
-
-                        System.Console.ReadLine();
-                    }
+                    DefineInWhatToPrintAndPrint(manager, index, printers);
                 }
                 else
                 {
@@ -101,7 +94,7 @@ namespace No8.Solution.Console
 
             if (Enum.TryParse(System.Console.ReadLine(), out PrinterType choice))
             {
-                string name = string.Empty;
+                string name = choice.ToString();
                 if (choice == PrinterType.Unknown)
                 {
                     System.Console.WriteLine("Enter printer name");
@@ -114,11 +107,13 @@ namespace No8.Solution.Console
                 try
                 {
                     manager.AddNewPrinter(choice, name, model);
+                    Logger.Trace($"New printer is added {name}-{model}");
                 }
                 catch (InvalidOperationException e)
                 {
                     Logger.Error(e.StackTrace);
                     System.Console.WriteLine(e);
+                    System.Console.WriteLine("Press smth to continue");
                     System.Console.ReadLine();
                 }
                 catch (ArgumentException e)
@@ -128,6 +123,33 @@ namespace No8.Solution.Console
                     System.Console.WriteLine("Press smth to continue");
                     System.Console.ReadLine();
                 }
+            }
+        }
+
+        private static void Print(object sender, PrintingEventArgs eventArgs)
+        {
+            Logger.Trace($"{eventArgs.Message} at {eventArgs.Time}");
+        }
+
+        private static void DefineInWhatToPrintAndPrint(PrinterManager manager, int index, List<Printer> printers)
+        {
+            if (index < printers.Count && index >= 0)
+            {
+                try
+                {
+                    foreach (var b in manager.Print(printers[index]))
+                    {
+                        System.Console.WriteLine(b);
+                    }
+                }
+                catch (FileNotFoundException e)
+                {
+                    System.Console.WriteLine(e);
+                    Logger.Error(e.StackTrace);
+                }
+
+
+                System.Console.ReadLine();
             }
         }
     }
