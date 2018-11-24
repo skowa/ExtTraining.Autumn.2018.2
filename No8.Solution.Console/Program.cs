@@ -1,21 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Forms;
 using NLog;
 using No8.Solution.Model;
-using No8.Solution.Repositories;
 
 namespace No8.Solution.Console
 {
     internal class Program
     {
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-
         [STAThread]
         public static void Main(string[] args)
         {
-            PrinterManager manager = new PrinterManager(new ListPrinterRepository());
-            manager.Printing += Print;
+            PrinterManager manager = new PrinterManager(LogManager.GetCurrentClassLogger());
 
             while (true)
             {
@@ -27,10 +24,10 @@ namespace No8.Solution.Console
                         CreatePrinter(manager);
                         System.Console.Clear();
                     }
-                    else if (key > 1 && key <= Enum.GetValues(typeof(PrinterType)).Length + 1)
+                    else if (key == 2 || key == 3)
                     {
-                        PrinterType type = (PrinterType)key - 2;
-                        Print(type, manager);
+                        string name = key == 2 ? "Epson" : "Canon";
+                        Print(manager, name);
                         System.Console.Clear();
                     }
                     else
@@ -40,26 +37,24 @@ namespace No8.Solution.Console
                 }
             }
 
-            manager.Printing -= Print;
+            manager.UnregisterLogger();
         }
 
         private static void Menu()
         {
             System.Console.WriteLine("Select your choice:");
             System.Console.WriteLine("1:Add new printer");
-            int count = 2;
-            foreach (var type in Enum.GetValues(typeof(PrinterType)))
-            {
-                System.Console.WriteLine($"{count++}:Print on {type}");
-            }
-            System.Console.WriteLine($"{count}:Exit");
+            System.Console.WriteLine("2:Print on Epson");
+            System.Console.WriteLine("3:Print on Canon");
+            System.Console.WriteLine("4:Exit");
         }
 
-        private static void Print(PrinterType type, PrinterManager manager)
+        private static void Print(PrinterManager manager, string name)
         {
             System.Console.Clear();
-            List<Printer> printers = manager.GetPrintersAccordingToTypeList(type);
+            List<Printer> printers = manager.GetPrintersAccordingToType(name);
             int index = 0;
+
             if (printers.Count != 0)
             {
                 foreach (var printer in printers)
@@ -87,67 +82,61 @@ namespace No8.Solution.Console
         {
             System.Console.Clear();
             System.Console.WriteLine("Select your choice:");
-            foreach (var type in Enum.GetValues(typeof(PrinterType)))
+            System.Console.WriteLine("1 - Epson");
+            System.Console.WriteLine("2 - Canon");
+
+            if (int.TryParse(System.Console.ReadLine(), out int choice))
             {
-                System.Console.WriteLine($"{(int)type} - {type}");
-            }
+                if (choice == 1 || choice == 2)
+                {
+                    System.Console.WriteLine("Enter printer model");
+                    string model = System.Console.ReadLine();
 
-            if (Enum.TryParse(System.Console.ReadLine(), out PrinterType choice))
-            {
-                string name = choice.ToString();
-                if (choice == PrinterType.Unknown)
-                {
-                    System.Console.WriteLine("Enter printer name");
-                    name = System.Console.ReadLine();
-                }
-
-                System.Console.WriteLine("Enter printer model");
-                string model = System.Console.ReadLine();
-
-                try
-                {
-                    manager.AddNewPrinter(choice, name, model);
-                    Logger.Trace($"New printer is added {name}-{model}");
-                }
-                catch (InvalidOperationException e)
-                {
-                    Logger.Error(e.StackTrace);
-                    System.Console.WriteLine(e);
-                    System.Console.WriteLine("Press smth to continue");
-                    System.Console.ReadLine();
-                }
-                catch (ArgumentException e)
-                {
-                    System.Console.WriteLine(e);
-                    Logger.Error(e.StackTrace);
-                    System.Console.WriteLine("Press smth to continue");
-                    System.Console.ReadLine();
+                    string name = choice == 1 ? "Epson" : "Canon";
+                    try
+                    {
+                        manager.AddNewPrinter(name, model);
+                    }
+                    catch (ArgumentException e)
+                    {
+                        manager.Logger.Error($"{e.Message} - {e.StackTrace}");
+                        System.Console.WriteLine(e);
+                        System.Console.WriteLine("Press smth to continue");
+                        System.Console.ReadLine();
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        manager.Logger.Error($"{e.Message} - {e.StackTrace}");
+                        System.Console.WriteLine(e);
+                        System.Console.WriteLine("Press smth to continue");
+                        System.Console.ReadLine();
+                    }
                 }
             }
         }
-
-        private static void Print(object sender, PrintingEventArgs eventArgs)
-        {
-            Logger.Trace($"{eventArgs.Message} at {eventArgs.Time}");
-        }
-
+        
         private static void DefineInWhatToPrintAndPrint(PrinterManager manager, int index, List<Printer> printers)
         {
             if (index < printers.Count && index >= 0)
             {
                 try
                 {
-                    foreach (var b in manager.Print(printers[index]))
-                    {
-                        System.Console.WriteLine(b);
-                    }
+                    var o = new OpenFileDialog();
+                    o.ShowDialog();
+
+                    TextWriter printTextWriter = System.Console.Out;
+                    manager.Print(printers[index], o.FileName, printTextWriter);
                 }
                 catch (FileNotFoundException e)
                 {
-                    System.Console.WriteLine(e);
-                    Logger.Error(e.StackTrace);
+                    manager.Logger.Error($"{e.Message} - {e.StackTrace}");
+                    System.Console.WriteLine(e.StackTrace);
                 }
-
+                catch (ArgumentException e)
+                {
+                    manager.Logger.Error($"{e.Message} - {e.StackTrace}");
+                    System.Console.WriteLine(e.StackTrace);
+                }
 
                 System.Console.ReadLine();
             }

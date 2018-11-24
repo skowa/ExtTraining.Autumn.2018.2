@@ -1,12 +1,23 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 
 namespace No8.Solution.Model
 {
     /// <summary>
     /// The abstract class of printer
     /// </summary>
-    public abstract class Printer
+    public abstract class Printer : IEquatable<Printer>
     {
+        /// <summary>
+        /// The start of printing event.
+        /// </summary>
+        public event EventHandler<PrintingEventArgs> StartPrint = delegate { };
+
+        /// <summary>
+        /// The end of printing event.
+        /// </summary>
+        public event EventHandler<PrintingEventArgs> EndPrint = delegate { };
+
         /// <summary>
         /// The constructor.
         /// </summary>
@@ -33,41 +44,31 @@ namespace No8.Solution.Model
         public string Model { get; }
 
         /// <summary>
-        /// Gets the type of the printer.
+        /// Simulates printing.
         /// </summary>
-        public PrinterType Type { get; protected set; }
-
-        /// <summary>
-        /// Gets bytes from the file with <paramref name="fileName"/>
-        /// </summary>
-        /// <param name="fileName">
-        /// The name of file to be printed.
+        /// <param name="stream">
+        /// The stream to be printed.
         /// </param>
-        /// <returns>
-        /// The array of bytes printed.
-        /// </returns>
-        /// <exception cref="FileNotFoundException">
-        /// Thrown when file with <paramref name="fileName"/> does not exist.
-        /// </exception>
-        public virtual byte[] Print(string fileName)
+        /// <param name="writer">
+        /// The output stream.
+        /// </param>
+        public void Print(Stream stream, TextWriter writer)
         {
-            byte[] result;
-
-            if (!File.Exists(fileName))
+            if (stream == null)
             {
-                throw new FileNotFoundException($"{nameof(fileName)} is not found");
+                throw new ArgumentNullException($"{nameof(stream)} is null");
             }
 
-            using (FileStream fs = File.OpenRead(fileName))
+            if (writer == null)
             {
-                result = new byte[fs.Length];
-
-                fs.Read(result, 0, result.Length);
+                throw new ArgumentNullException($"{nameof(writer)} is null");
             }
 
-            return result;
+            OnStartPrint(new PrintingEventArgs(DateTime.Now, "Printing started"));
+            ConcretePrint(stream, writer);
+            OnEndPrint(new PrintingEventArgs(DateTime.Now, "Printing ended"));
         }
-
+        
         /// <summary>
         /// Represents <see cref="Printer"/> instance as a string.
         /// </summary>
@@ -75,5 +76,73 @@ namespace No8.Solution.Model
         /// <see cref="Printer"/> instance as a string.
         /// </returns>
         public override string ToString() => $"{Name} - {Model}";
+
+        /// <summary>
+        /// Defines whether two printers are equal.
+        /// </summary>
+        /// <param name="other">
+        /// The printer to be compared to.
+        /// </param>
+        /// <returns>
+        /// True, if printers are equal; otherwise false.
+        /// </returns>
+        public bool Equals(Printer other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return ReferenceEquals(this, other) || string.Equals(Name, other.Name) && string.Equals(Model, other.Model);
+        }
+
+        /// <summary>
+        /// Gets hashcode of the <see cref="Printer"/> instance.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="Printer"/> instance hashcode.
+        /// </returns>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((Name != null ? Name.GetHashCode() : 0) * 397) ^ (Model != null ? Model.GetHashCode() : 0);
+            }
+        }
+
+        protected abstract void ConcretePrint(Stream stream, TextWriter writer);
+
+        protected virtual void OnStartPrint(PrintingEventArgs eventArgs)
+        {
+            if (eventArgs == null)
+            {
+                throw new ArgumentNullException($"{nameof(eventArgs)} is null");
+            }
+
+            StartPrint?.Invoke(this, eventArgs);
+        }
+
+        protected virtual void OnEndPrint(PrintingEventArgs eventArgs)
+        {
+            if (eventArgs == null)
+            {
+                throw new ArgumentNullException($"{nameof(eventArgs)} is null");
+            }
+
+            EndPrint?.Invoke(this, eventArgs);
+        }
+    }
+
+    public sealed class PrintingEventArgs : EventArgs
+    {
+        public PrintingEventArgs(DateTime time, string message)
+        {
+            Time = time;
+            Message = message;
+        }
+
+        public DateTime Time { get; }
+
+        public string Message { get; }
     }
 }

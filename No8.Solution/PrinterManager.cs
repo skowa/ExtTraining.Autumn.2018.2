@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Windows.Forms;
+using System.IO;
+using System.Linq;
+using NLog;
 using No8.Solution.Factory;
 using No8.Solution.Model;
-using No8.Solution.Repositories;
 
 namespace No8.Solution
 {
@@ -12,27 +13,25 @@ namespace No8.Solution
     /// </summary>
     public class PrinterManager
     {
-        /// <summary>
-        /// The event on printing
-        /// </summary>
-        public event EventHandler<PrintingEventArgs> Printing = delegate { };
-
-        private readonly IPrinterRepository _repository;
+        private readonly List<Printer> _printers;
 
         /// <summary>
         /// The constructor.
         /// </summary>
-        /// <param name="repository">
-        /// The <see cref="IPrinterRepository"/> instance where <see cref="Printer"/> instances are stored.
-        /// </param>
-        public PrinterManager(IPrinterRepository repository) => this._repository = repository;
+        public PrinterManager(Logger logger)
+        {
+            Logger = logger;
+            _printers = new List<Printer>();
+        }
+
+        /// <summary>
+        /// Gets the logger.
+        /// </summary>
+        public Logger Logger { get; }
 
         /// <summary>
         /// The method that adds the new printer.
         /// </summary>
-        /// <param name="type">
-        /// The type of printer to be added.
-        /// </param>
         /// <param name="name">
         /// The name of printer to be added.
         /// </param>
@@ -42,73 +41,93 @@ namespace No8.Solution
         /// <exception cref="InvalidOperationException">
         /// Thrown when the printer with <paramref name="name"/> and <paramref name="model"/> already exists.
         /// </exception>
-        /// <exception cref="ArgumentException">
-        /// Thrown when <paramref name="type"/> is incorrect.
-        /// </exception>
-        public void AddNewPrinter(PrinterType type, string name, string model)
+        public void AddNewPrinter(string name, string model)
         {
-            if (_repository.TryGetPrinter(name, model))
+            if (TryGetPrinter(name, model))
             {
                 throw new InvalidOperationException("The printer already exists");
             }
 
-            switch (type)
-            {
-                case PrinterType.Epson:
-                    _repository.AddPrinter(new EpsonPrinterCreator().Create(model));
-                    break;
-                case PrinterType.Canon:
-                    _repository.AddPrinter(new CanonPrinterCreator().Create(model));
-                    break;
-                case PrinterType.Unknown:
-                    _repository.AddPrinter(new UnknownPrinterCreator().Create(name, model));
-                    break;
-                default:
-                    throw new ArgumentException($"{nameof(type)} is invalid");
-            }
+            Printer printer = PrinterFactory.CreatePrinter(name, model);
+            _printers.Add(printer);
+            Logger.Trace($"Printer {name} - {model} is added.");
+
+            printer.StartPrint += LogEvent;
+            printer.EndPrint += LogEvent;
         }
 
         /// <summary>
-        /// The method that gets bytes to prints.
+        /// The method sends printing task to <paramref name="printer"/>.
         /// </summary>
         /// <param name="printer">
         /// The printer that prints.
         /// </param>
-        /// <returns>
-        /// The byte array to be shown.
-        /// </returns>
-        public byte[] Print(Printer printer)
+        /// <param name="fileName">
+        /// The file to be printed.
+        /// </param>
+        /// <param name="writer">
+        /// The output stream.
+        /// </param>
+        public void Print(Printer printer, string fileName, TextWriter writer)
         {
-            var o = new OpenFileDialog();
-            o.ShowDialog();
+            if (printer == null)
+            {
+                throw new ArgumentNullException($"{nameof(printer)} is null");
+            }
 
-            OnPrinting(new PrintingEventArgs(DateTime.Now, "Printing started"));
-            byte[] result = printer.Print(o.FileName);
-            OnPrinting(new PrintingEventArgs(DateTime.Now, "Printing ended"));
+            if (writer == null)
+            {
+                throw new ArgumentNullException($"{nameof(writer)} is null");
+            }
 
-            return result;
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                throw new ArgumentException($"{nameof(fileName)} is invalid");
+            }
+
+            if (!File.Exists(fileName))
+            {
+                throw new FileNotFoundException($"{nameof(fileName)} is not found");
+            }
+
+            printer.Print(File.OpenRead(fileName), writer);
         }
 
         /// <summary>
         /// The method that gets list of printers according to the type.
         /// </summary>
-        /// <param name="type">
+        /// <param name="name">
         /// The type of printers to be added to the list.
         /// </param>
         /// <returns>
-        /// The list of <see cref="Printer"/> instances with specified <paramref name="type"/>
+        /// The list of <see cref="Printer"/> instances with specified <paramref name="name"/>
         /// </returns>
-        public List<Printer> GetPrintersAccordingToTypeList(PrinterType type) =>
-            _repository.GetPrintersAccordingToType(type);
-        
-        protected virtual void OnPrinting(PrintingEventArgs eventArgs)
+        public List<Printer> GetPrintersAccordingToType(string name) =>
+            _printers.Where(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        /// <summary>
+        /// Unregister the logger from the printers events.
+        /// </summary>
+        public void UnregisterLogger()
+        {
+            foreach (var printer in _printers)
+            {
+                printer.StartPrint -= LogEvent;
+                printer.EndPrint -= LogEvent;
+            }
+        }
+
+        private void LogEvent(object sender, PrintingEventArgs eventArgs)
         {
             if (eventArgs == null)
             {
-                throw new ArgumentNullException($"{nameof(eventArgs)} is null");
+                throw new ArgumentNullException(nameof(eventArgs));
             }
 
-            Printing(this, eventArgs);
+            Logger.Trace($"{eventArgs.Message} - {eventArgs.Time}");
         }
+
+        private bool TryGetPrinter(string name, string model) =>
+            _printers.Any(p => p.Name == name && p.Model == model);
     }
 }
